@@ -43,7 +43,7 @@ def compute_cov_a(a, classname, layer_info, fast_cnn):
         if is_cuda:
             a = a.cuda()
 
-    return a.t() @ (a / batch_size)
+    return a.t().dot((a / batch_size))
 
 
 def compute_cov_g(g, classname, layer_info, fast_cnn):
@@ -61,7 +61,7 @@ def compute_cov_g(g, classname, layer_info, fast_cnn):
         g = g.sum(-1)
 
     g_ = g * batch_size
-    return g_.t() @ (g_ / g.size(0))
+    return g_.t().dot((g_ / g.size(0)))
 
 
 def update_running_stat(aa, m_aa, momentum):
@@ -218,10 +218,10 @@ class KFACOptimizer(optim.Optimizer):
             else:
                 p_grad_mat = p.grad.data
 
-            v1 = self.Q_g[m].t() @ p_grad_mat @ self.Q_a[m]
+            v1 = self.Q_g[m].t().dot(p_grad_mat).dot(self.Q_a[m])
             v2 = v1 / (
                 self.d_g[m].unsqueeze(1) * self.d_a[m].unsqueeze(0) + la)
-            v = self.Q_g[m] @ v2 @ self.Q_a[m].t()
+            v = self.Q_g[m].dot(v2).dot(self.Q_a[m].t())
 
             v = v.view(p.grad.data.size())
             updates[p] = v

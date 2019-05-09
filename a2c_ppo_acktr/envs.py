@@ -5,12 +5,11 @@ import numpy as np
 import torch
 from gym.spaces.box import Box
 
-from baselines import bench
-from baselines.common.atari_wrappers import make_atari, wrap_deepmind
-from baselines.common.vec_env import VecEnvWrapper
-from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
-from baselines.common.vec_env.shmem_vec_env import ShmemVecEnv
-from baselines.common.vec_env.vec_normalize import \
+from a2c_ppo_acktr import bench
+from a2c_ppo_acktr.common.vec_env import VecEnvWrapper
+from a2c_ppo_acktr.common.vec_env.dummy_vec_env import DummyVecEnv
+from a2c_ppo_acktr.common.vec_env.shmem_vec_env import ShmemVecEnv
+from a2c_ppo_acktr.common.vec_env.vec_normalize import \
     VecNormalize as VecNormalize_
 
 try:
@@ -40,7 +39,7 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets):
         is_atari = hasattr(gym.envs, 'atari') and isinstance(
             env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
         if is_atari:
-            env = make_atari(env_id)
+            raise 'Atari not supported'
 
         env.seed(seed + rank)
 
@@ -54,15 +53,6 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets):
                 env,
                 os.path.join(log_dir, str(rank)),
                 allow_early_resets=allow_early_resets)
-
-        if is_atari:
-            if len(env.observation_space.shape) == 3:
-                env = wrap_deepmind(env)
-        elif len(env.observation_space.shape) == 3:
-            raise NotImplementedError(
-                "CNN models work only for atari,\n"
-                "please use a custom wrapper for a custom pixel input env.\n"
-                "See wrap_deepmind for an example.")
 
         # If the input has shape (W,H,3), wrap for PyTorch convolutions
         obs_shape = env.observation_space.shape
@@ -143,7 +133,7 @@ class TransposeImage(TransposeObs):
         Transpose observation space for images
         """
         super(TransposeImage, self).__init__(env)
-        assert len(op) == 3, f"Error: Operation, {str(op)}, must be dim3"
+        assert len(op) == 3, "Error: Operation, {str(op)}, must be dim3"
         self.op = op
         obs_shape = self.observation_space.shape
         self.observation_space = Box(
@@ -207,8 +197,6 @@ class VecNormalize(VecNormalize_):
         self.training = False
 
 
-# Derived from
-# https://github.com/openai/baselines/blob/master/baselines/common/vec_env/vec_frame_stack.py
 class VecPyTorchFrameStack(VecEnvWrapper):
     def __init__(self, venv, nstack, device=None):
         self.venv = venv
